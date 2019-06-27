@@ -33,10 +33,11 @@ Notes:
 import argparse
 import csv
 import json
-import magic
+#import magic
 import os
 import sys
-import urlparse
+#import urlparse
+import urllib
 import base64
 import posixpath
 import hashlib
@@ -82,10 +83,11 @@ def createDir(path):
 def getMagic(fileName):
 	"""Get file magic."""
 
-	mime = magic.Magic(mime=True)
-	mimeType = mime.from_file(fileName)
+	#mime = magic.Magic(mime=True)
+	#mimeType = mime.from_file(fileName)
 
-	return mimeType
+	#return mimeType
+	return "video/MP2T"
 
 
 # -----------------------------------------------------------------------------
@@ -98,9 +100,13 @@ def getObjects(har):
 	idx = 0
 
 	for entry in har['log']['entries']:
-
+		
 		method = entry['request']['method']
-		mimeType = entry['response']['content']['mimeType']
+		mimeType = "video/mp2t"
+		try:
+			mimeType = entry['response']['content']['mimeType']
+		except:
+			pass
 		size = entry['response']['content']['size']
 		if 'text' in entry['response']['content']:
 			content = entry['response']['content']['text']
@@ -137,7 +143,7 @@ def printObjects(objects):
 			"[Size: " + str(objects[idx]['size']).rjust(8, " ") + "] " +\
 			"[" + objects[idx]['url'] + "]"
 
-		print fileObject
+		print(fileObject)
 
 		idx += 1
 
@@ -148,7 +154,7 @@ def printObjects(objects):
 def getURL(URL):
 	"""Get santizied URL"""
 
-	parsedURL = urlparse.urlparse(URL).netloc
+	parsedURL = urllib.parse.urlparse(URL).netloc
 
 	### remove port
 	if ":" in parsedURL:
@@ -164,12 +170,13 @@ def getURL(URL):
 # -----------------------------------------------------------------------------
 def getFilename(URL):
 	"""Get filename from URL"""
+	
+	# path = urllib.parse(URL).path
 
-	path = urlparse.urlparse(URL).path
+	# workPath = path.split('/')
 
-	workPath = path.split('/')
-
-	filename =  workPath[-1]
+	# filename =  workPath[-1]
+	filename = URL.split('/')[-1].split('#')[0].split('?')[0]
 
 	### generate filename based on url.file when no filename exists
 	if filename == "":
@@ -245,8 +252,11 @@ def processObject(idx, content, filename, path, numberFiles):
 	data = getB64Decode(content)
 
 	if numberFiles:
+		print("Ding")
 		file = str(idx) + "-" + getFilename(filename)
+		print(file)
 	else:
+		print("Dong")
 		file = getFilename(filename)
 
 	writeFile(path + file, data)
@@ -254,11 +264,11 @@ def processObject(idx, content, filename, path, numberFiles):
 	size = getSize(path + file)
 	mime = getMagic(path + file)
 
-	print "[" + str(idx).rjust(3, " ") + "] " +\
+	print("[" + str(idx).rjust(3, " ") + "] " +\
 		"[" + file[0:30].rjust(30, " ") + "] " +\
 		"[Size: " + size.rjust(8, " ") + "] "+\
 		"[" + md5 + "] [" + mime.rjust(30, " ") + "] " +\
-		"[" + objectList[idx]['url'] + "]"
+		"[" + objectList[idx]['url'] + "]")
 
 	return True
 
@@ -283,7 +293,7 @@ def extractObject(objectList, index, path="", numberFiles=False):
 			if 'content' in objectList[idx]:
 				processObject(idx, objectList[idx]['content'], objectList[idx]['url'], path, numberFiles)
 			else:
-				print "[" + str(idx).rjust(3, " ") + "] No content for object found."
+				print("[" + str(idx).rjust(3, " ") + "] No content for object found.")
 
 			idx += 1
 
@@ -295,9 +305,9 @@ def extractObject(objectList, index, path="", numberFiles=False):
 			if 'content' in objectList[idx]:
 				processObject(idx, objectList[idx]['content'], objectList[idx]['url'], path, numberFiles)
 			else:
-				print "[" + str(index).rjust(3, " ") + "] No content for object found."
+				print ("[" + str(index).rjust(3, " ") + "] No content for object found.")
 		else:
-			print "[" + str(index).rjust(3, " ") + "] Object not found."
+			print ("[" + str(index).rjust(3, " ") + "] Object not found.")
 
 
 # -----------------------------------------------------------------------------
@@ -307,7 +317,7 @@ def writeFile(file, data):
 	"""Write data to file."""
 
 	try:
-		with codecs.open(file, "w", 'utf8') as exportFile:
+		with open(file, "wb") as exportFile:
 			exportFile.write(data)
 	except (UnicodeDecodeError) as e:
 		with open(file, "w") as exportFile:
@@ -323,22 +333,24 @@ if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-c', '--csv', help="Save object list to [CSV]")
-	parser.add_argument('-l', '--list', action='store_true', default=0, help="List objects")
+	parser.add_argument('-l', '--list', action='store_true', default=1, help="List objects")
 	parser.add_argument('-x', '--eXtract', type=int, help="eXtract object matching index from -l output")
 	parser.add_argument('-xa', '--eXtractAll', action='store_true', default=0, help="eXtract all objects")
 	parser.add_argument('-d', '--directory', help="[DIRECTORY] to extract files to")
 	parser.add_argument('-n', '--number', action='store_true', default=0, help="prepend output filename with index from -l output")
-	parser.add_argument('har_file')
+	parser.add_argument('har_file', default="../Archive 19-06-27 12-21-24.har")
 	args = parser.parse_args()
 
 
 	### Read HAR file
 	try:
-		har = json.load(file(args.har_file, 'r'))
+		harFile = open(args.har_file, "r")
+		har = json.loads(harFile.read())
+		harFile.close()
 	except IndexError:
 		sys.stderr.write("Usage: %s <file.har>\n" % (sys.argv[0]))
 		sys.exit(1)
-	except ValueError, e:
+	except ValueError as e:
 		sys.stderr.write("Invalid .har file: %s\n" % (str(e)))
 		sys.exit(2)
 
