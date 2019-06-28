@@ -39,6 +39,7 @@ import sys
 #import urlparse
 import urllib
 import base64
+import binascii
 import posixpath
 import hashlib
 import codecs
@@ -108,6 +109,7 @@ def getObjects(har):
 		except:
 			pass
 		size = entry['response']['content']['size']
+		content = ""
 		if 'text' in entry['response']['content']:
 			content = entry['response']['content']['text']
 		url = entry['request']['url']
@@ -154,7 +156,8 @@ def printObjects(objects):
 def getURL(URL):
 	"""Get santizied URL"""
 
-	parsedURL = urllib.parse.urlparse(URL).netloc
+	#parsedURL = urllib.parse.urlparse(URL).netloc
+	parsedURL = URL.split('/')[2]
 
 	### remove port
 	if ":" in parsedURL:
@@ -226,7 +229,10 @@ def getB64Decode(data):
 	try:
 		result = base64.b64decode(data)
 		return result
-	except (TypeError, UnicodeEncodeError) as e:
+	# except:
+	# 	print("Aw, snap!")
+	# 	print(data)
+	except (TypeError, UnicodeEncodeError, binascii.Error, ValueError) as e:
 	    return data
 
 
@@ -239,7 +245,10 @@ def getUTF8(data):
 	try:
 		result = base64.b64decode(data)
 		return result
-	except (TypeError, UnicodeEncodeError) as e:
+	# except:
+	# 	print("Aw, snap!")
+	# 	print(data)
+	except (TypeError, UnicodeEncodeError, binascii.Error, ValueError) as e:
 	    return data
 
 
@@ -258,6 +267,7 @@ def processObject(idx, content, filename, path, numberFiles):
 	else:
 		print("Dong")
 		file = getFilename(filename)
+		print(file)
 
 	writeFile(path + file, data)
 	md5 = getMD5(path + file)
@@ -315,12 +325,13 @@ def extractObject(objectList, index, path="", numberFiles=False):
 # -----------------------------------------------------------------------------
 def writeFile(file, data):
 	"""Write data to file."""
-
+	if(data == None):
+		data = ""
 	try:
 		with open(file, "wb") as exportFile:
 			exportFile.write(data)
-	except (UnicodeDecodeError) as e:
-		with open(file, "w") as exportFile:
+	except (UnicodeDecodeError, TypeError) as e:
+		with open(file, "w", encoding="utf-8") as exportFile:
 			exportFile.write(data)
 
 	return True
@@ -344,7 +355,7 @@ if __name__ == "__main__":
 
 	### Read HAR file
 	try:
-		harFile = open(args.har_file, "r")
+		harFile = open(args.har_file, "r", encoding="utf-8")
 		har = json.loads(harFile.read())
 		harFile.close()
 	except IndexError:
