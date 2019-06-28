@@ -88,7 +88,7 @@ def getMagic(fileName):
 	#mimeType = mime.from_file(fileName)
 
 	#return mimeType
-	return "video/MP2T"
+	return "application/octet-stream"
 
 
 # -----------------------------------------------------------------------------
@@ -103,7 +103,7 @@ def getObjects(har):
 	for entry in har['log']['entries']:
 		
 		method = entry['request']['method']
-		mimeType = "video/mp2t"
+		mimeType = "application/octet-stream"
 		try:
 			mimeType = entry['response']['content']['mimeType']
 		except:
